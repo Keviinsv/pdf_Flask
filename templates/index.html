@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Archivos PDF</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        input[type="text"], input[type="file"] { margin: 10px 0; padding: 5px; }
+        button { margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <h2>Subir nuevo PDF</h2>
+    <input type="file" id="pdfFile" accept=".pdf">
+    <button onclick="uploadPDF()">Subir</button>
+
+    <h2>Buscar archivo</h2>
+    <input type="text" id="searchBox" placeholder="Buscar..." oninput="loadFiles()">
+
+    <h2>Lista de Archivos</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="fileTable"></tbody>
+    </table>
+
+    <script>
+        function uploadPDF() {
+            const file = document.getElementById("pdfFile").files[0];
+            if (!file) return alert("Selecciona un archivo PDF.");
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch("/upload", { method: "POST", body: formData })
+                .then(res => res.text())
+                .then(alert)
+                .then(loadFiles)
+                .catch(console.error);
+        }
+
+        function loadFiles() {
+            const query = document.getElementById("searchBox").value;
+            fetch("/files")
+                .then(res => res.json())
+                .then(files => {
+                    const tbody = document.getElementById("fileTable");
+                    tbody.innerHTML = "";
+                    files
+                        .filter(f => f.toLowerCase().includes(query.toLowerCase()))
+                        .forEach(name => {
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${name}</td>
+                                <td>
+                                    <button onclick="downloadFile('${name}')">Descargar</button>
+                                    <button onclick="renameFile('${name}')">Renombrar</button>
+                                    <button onclick="deleteFile('${name}')">Eliminar</button>
+                                </td>
+                            `;
+                            tbody.appendChild(row);
+                        });
+                });
+        }
+
+        function downloadFile(name) {
+            window.open(`/uploads/${name}`, "_blank");
+        }
+
+        function deleteFile(name) {
+            if (!confirm(`¿Eliminar "${name}"?`)) return;
+            fetch(`/delete/${encodeURIComponent(name)}`, { method: "DELETE" })
+                .then(res => res.text())
+                .then(alert)
+                .then(loadFiles);
+        }
+
+        function renameFile(oldName) {
+            const newName = prompt("Nuevo nombre (sin .pdf):", oldName.replace(".pdf", ""));
+            if (!newName) return;
+            fetch("/rename", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ old_name: oldName, new_name: newName + ".pdf" })
+            })
+            .then(res => res.text())
+            .then(alert)
+            .then(loadFiles);
+        }
+
+        window.onload = loadFiles;
+    </script>
+</body>
+</html>
