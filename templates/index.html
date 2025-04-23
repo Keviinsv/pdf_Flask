@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Gestión de Archivos PDF</title>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/337/337946.png">
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         table { border-collapse: collapse; width: 100%; }
@@ -28,13 +29,16 @@
                 <th>Acciones</th>
             </tr>
         </thead>
-        <tbody id="fileTable"></tbody>
+        <tbody id="fileTable">
+            <tr><td colspan="2">Cargando...</td></tr>
+        </tbody>
     </table>
 
     <script>
         function uploadPDF() {
             const file = document.getElementById("pdfFile").files[0];
             if (!file) return alert("Selecciona un archivo PDF.");
+            if (file.type !== "application/pdf") return alert("Solo se permiten archivos PDF.");
 
             const formData = new FormData();
             formData.append("file", file);
@@ -48,10 +52,12 @@
 
         function loadFiles() {
             const query = document.getElementById("searchBox").value;
+            const tbody = document.getElementById("fileTable");
+            tbody.innerHTML = "<tr><td colspan='2'>Cargando...</td></tr>";
+
             fetch("/files")
                 .then(res => res.json())
                 .then(files => {
-                    const tbody = document.getElementById("fileTable");
                     tbody.innerHTML = "";
                     files
                         .filter(f => f.toLowerCase().includes(query.toLowerCase()))
@@ -71,7 +77,7 @@
         }
 
         function downloadFile(name) {
-            window.open(`/uploads/${name}`, "_blank");
+            window.open(`/uploads/${encodeURIComponent(name)}`, "_blank");
         }
 
         function deleteFile(name) {
